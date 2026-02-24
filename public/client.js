@@ -1,5 +1,80 @@
 const socket = io();
 const MAX_TABLE_SEATS = 6;
+const FACE_RANKS = new Set(["J", "Q", "K"]);
+const NUMBER_PIP_LAYOUTS = {
+  "2": [
+    { x: 50, y: 18 },
+    { x: 50, y: 82, flip: true },
+  ],
+  "3": [
+    { x: 50, y: 16 },
+    { x: 50, y: 50 },
+    { x: 50, y: 84, flip: true },
+  ],
+  "4": [
+    { x: 30, y: 22 },
+    { x: 70, y: 22 },
+    { x: 30, y: 78, flip: true },
+    { x: 70, y: 78, flip: true },
+  ],
+  "5": [
+    { x: 30, y: 22 },
+    { x: 70, y: 22 },
+    { x: 50, y: 50 },
+    { x: 30, y: 78, flip: true },
+    { x: 70, y: 78, flip: true },
+  ],
+  "6": [
+    { x: 30, y: 18 },
+    { x: 70, y: 18 },
+    { x: 30, y: 50 },
+    { x: 70, y: 50 },
+    { x: 30, y: 82, flip: true },
+    { x: 70, y: 82, flip: true },
+  ],
+  "7": [
+    { x: 30, y: 18 },
+    { x: 70, y: 18 },
+    { x: 50, y: 34 },
+    { x: 30, y: 50 },
+    { x: 70, y: 50 },
+    { x: 30, y: 82, flip: true },
+    { x: 70, y: 82, flip: true },
+  ],
+  "8": [
+    { x: 50, y: 14 },
+    { x: 30, y: 24 },
+    { x: 70, y: 24 },
+    { x: 30, y: 50 },
+    { x: 70, y: 50 },
+    { x: 30, y: 76, flip: true },
+    { x: 70, y: 76, flip: true },
+    { x: 50, y: 86, flip: true },
+  ],
+  "9": [
+    { x: 50, y: 14 },
+    { x: 30, y: 24 },
+    { x: 70, y: 24 },
+    { x: 30, y: 50 },
+    { x: 50, y: 50 },
+    { x: 70, y: 50 },
+    { x: 30, y: 76, flip: true },
+    { x: 70, y: 76, flip: true },
+    { x: 50, y: 86, flip: true },
+  ],
+  "10": [
+    { x: 50, y: 12 },
+    { x: 30, y: 20 },
+    { x: 70, y: 20 },
+    { x: 30, y: 38 },
+    { x: 70, y: 38 },
+    { x: 30, y: 62, flip: true },
+    { x: 70, y: 62, flip: true },
+    { x: 30, y: 80, flip: true },
+    { x: 70, y: 80, flip: true },
+    { x: 50, y: 88, flip: true },
+  ],
+};
 
 const elements = {
   joinScreen: document.getElementById("joinScreen"),
@@ -524,25 +599,32 @@ function createCardElement(card, options = {}) {
 
   const top = document.createElement("div");
   top.className = "card-top";
-  top.textContent = `${parsed.rank}${parsed.suit}`;
+  const topRank = document.createElement("span");
+  topRank.textContent = parsed.rank;
+  top.append(topRank, createSuitSvg(parsed.suitSymbol, "suit-icon suit-corner", 12));
 
   const bottom = document.createElement("div");
   bottom.className = "card-bottom";
-  bottom.textContent = `${parsed.rank}${parsed.suit}`;
+  const bottomRank = document.createElement("span");
+  bottomRank.textContent = parsed.rank;
+  bottom.append(bottomRank, createSuitSvg(parsed.suitSymbol, "suit-icon suit-corner", 12));
 
-  el.textContent = parsed.suit;
-  el.append(top, bottom);
+  const middle = createCardMiddle(parsed);
+
+  el.append(top, middle, bottom);
   return el;
 }
 
 function parseCard(card) {
   if (typeof card !== "string" || card.length < 2) {
-    return { rank: "?", suit: "?", red: false };
+    return { rankCode: "?", rank: "?", suitCode: "?", suitSymbol: "?", red: false };
   }
-  const rank = card[0] === "T" ? "10" : card[0];
-  const suit = card[1];
-  const red = suit === "H" || suit === "D";
-  return { rank, suit, red };
+  const rankCode = card[0];
+  const rank = rankCode === "T" ? "10" : rankCode;
+  const suitCode = card[1];
+  const suitSymbol = suitToSymbol(suitCode);
+  const red = suitCode === "H" || suitCode === "D";
+  return { rankCode, rank, suitCode, suitSymbol, red };
 }
 
 function initials(name) {
@@ -560,7 +642,7 @@ function initials(name) {
 }
 
 function formatCards(cards) {
-  return (cards || []).join(" ");
+  return (cards || []).map((card) => prettyCard(card)).join(" ");
 }
 
 function formatMoney(value) {
@@ -582,4 +664,90 @@ function scoreToAccent(score) {
     return "#fb8c00";
   }
   return "#e53935";
+}
+
+function prettyCard(card) {
+  const parsed = parseCard(card);
+  return `${parsed.rank}${parsed.suitSymbol}`;
+}
+
+function createSuitSvg(symbol, className, fontSize) {
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNamespace, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", className);
+
+  const text = document.createElementNS(svgNamespace, "text");
+  text.setAttribute("x", "12");
+  text.setAttribute("y", "17");
+  text.setAttribute("text-anchor", "middle");
+  text.setAttribute("font-size", String(fontSize));
+  text.setAttribute("font-weight", "700");
+  text.setAttribute("fill", "currentColor");
+  text.textContent = symbol;
+
+  svg.appendChild(text);
+  return svg;
+}
+
+function suitToSymbol(suitCode) {
+  if (suitCode === "S") {
+    return "\u2660";
+  }
+  if (suitCode === "H") {
+    return "\u2665";
+  }
+  if (suitCode === "D") {
+    return "\u2666";
+  }
+  if (suitCode === "C") {
+    return "\u2663";
+  }
+  return "?";
+}
+
+function createCardMiddle(parsed) {
+  const middle = document.createElement("div");
+  middle.className = "card-middle";
+
+  if (parsed.rankCode === "A") {
+    middle.classList.add("ace-middle");
+    middle.appendChild(createSuitSvg(parsed.suitSymbol, "suit-icon suit-ace", 22));
+    return middle;
+  }
+
+  if (FACE_RANKS.has(parsed.rankCode)) {
+    middle.classList.add("face-middle");
+
+    const topFace = document.createElement("span");
+    topFace.className = "face-rank";
+    topFace.textContent = parsed.rank;
+
+    const suit = createSuitSvg(parsed.suitSymbol, "suit-icon suit-face", 22);
+
+    const bottomFace = document.createElement("span");
+    bottomFace.className = "face-rank face-rank-mirror";
+    bottomFace.textContent = parsed.rank;
+
+    middle.append(topFace, suit, bottomFace);
+    return middle;
+  }
+
+  middle.classList.add("pip-middle");
+  const layout = NUMBER_PIP_LAYOUTS[parsed.rank] || [{ x: 50, y: 50 }];
+
+  for (const point of layout) {
+    const slot = document.createElement("div");
+    slot.className = "pip-slot";
+    if (point.flip) {
+      slot.classList.add("pip-slot-flip");
+    }
+    slot.style.left = `${point.x}%`;
+    slot.style.top = `${point.y}%`;
+    slot.appendChild(createSuitSvg(parsed.suitSymbol, "suit-icon suit-pip", 14));
+    middle.appendChild(slot);
+  }
+
+  return middle;
 }

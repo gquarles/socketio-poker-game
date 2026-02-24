@@ -325,15 +325,97 @@ body {
   position: absolute;
   top: 3px;
   left: 5px;
-  font-size: 11px;
+  font-size: 0.52em;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .card-bottom {
   position: absolute;
   bottom: 3px;
   right: 5px;
-  font-size: 11px;
+  font-size: 0.52em;
   transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.card-middle {
+  position: absolute;
+  inset: 14px 5px 14px 5px;
+  pointer-events: none;
+}
+
+.ace-middle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.face-middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.face-rank {
+  font-size: 0.92em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.face-rank-mirror {
+  transform: rotate(180deg);
+  opacity: 0.78;
+}
+
+.pip-middle {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pip-slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.pip-slot-flip {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.suit-icon {
+  display: block;
+  width: 0.74em;
+  height: 0.74em;
+}
+
+.suit-ace {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.suit-face {
+  width: 1em;
+  height: 1em;
+}
+
+.suit-pip {
+  width: 0.68em;
+  height: 0.68em;
+}
+
+.suit-corner {
+  width: 0.62em;
+  height: 0.62em;
 }
 
 .card-back {
@@ -364,12 +446,12 @@ body {
 
 .seat-2 {
   top: 84%;
-  left: 12%;
+  left: 88%;
 }
 
 .seat-3 {
   top: 16%;
-  left: 12%;
+  left: 88%;
 }
 
 .seat-4 {
@@ -379,12 +461,12 @@ body {
 
 .seat-5 {
   top: 16%;
-  left: 88%;
+  left: 12%;
 }
 
 .seat-6 {
   top: 84%;
-  left: 88%;
+  left: 12%;
 }
 
 .seat-empty {
@@ -403,6 +485,25 @@ body {
   margin-left: -14px;
 }
 
+.player-cards .card .card-middle {
+  inset: 10px 4px 10px 4px;
+}
+
+.player-cards .card .suit-ace {
+  width: 1em;
+  height: 1em;
+}
+
+.player-cards .card .suit-face {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.player-cards .card .suit-pip {
+  width: 0.58em;
+  height: 0.58em;
+}
+
 .player-cards .card:first-child {
   margin-left: 0;
 }
@@ -412,6 +513,10 @@ body {
   height: 72px;
   font-size: 20px;
   margin-left: -19px;
+}
+
+.seat-1 .player-cards .card .card-middle {
+  inset: 14px 5px 14px 5px;
 }
 
 .seat-1 .player-cards {
@@ -494,12 +599,12 @@ body {
 
 .seat-2 .current-bet {
   top: 18px;
-  right: -62px;
+  left: -62px;
 }
 
 .seat-3 .current-bet {
   top: 82px;
-  right: -48px;
+  left: -48px;
 }
 
 .seat-4 .current-bet {
@@ -508,12 +613,12 @@ body {
 
 .seat-5 .current-bet {
   top: 82px;
-  left: -48px;
+  right: -48px;
 }
 
 .seat-6 .current-bet {
   top: 18px;
-  left: -62px;
+  right: -62px;
 }
 
 .dealer-button {
@@ -871,22 +976,22 @@ input[type="range"]::-webkit-slider-thumb {
 
   .seat-2 {
     top: 80%;
-    left: 14%;
+    left: 86%;
   }
 
   .seat-3 {
     top: 20%;
-    left: 14%;
+    left: 86%;
   }
 
   .seat-5 {
     top: 20%;
-    left: 86%;
+    left: 14%;
   }
 
   .seat-6 {
     top: 80%;
-    left: 86%;
+    left: 14%;
   }
 
   .seat-1 {
@@ -907,9 +1012,28 @@ input[type="range"]::-webkit-slider-thumb {
     font-size: 16px;
   }
 
+  .community-cards .card .card-middle {
+    inset: 11px 4px 11px 4px;
+  }
+
+  .community-cards .card .suit-ace {
+    width: 1.05em;
+    height: 1.05em;
+  }
+
+  .community-cards .card .suit-face {
+    width: 0.92em;
+    height: 0.92em;
+  }
+
+  .community-cards .card .suit-pip {
+    width: 0.62em;
+    height: 0.62em;
+  }
+
   .card-top,
   .card-bottom {
-    font-size: 9px;
+    font-size: 0.5em;
   }
 
   .bet-slider-container {
