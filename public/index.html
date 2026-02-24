@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Multiplayer Poker UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <section id="joinScreen" class="join-overlay">
+      <div class="join-card">
+        <h1>Online Poker</h1>
+        <p>Join the table. First player is admin.</p>
+        <form id="joinForm" class="join-form">
+          <input id="nameInput" type="text" maxlength="20" placeholder="Your name" required />
+          <button type="submit">Join Table</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden">
+      <div class="game-area">
+        <aside class="action-log">
+          <div class="log-header">Game Log</div>
+          <div id="statusLine" class="status-line"></div>
+
+          <div class="table-meta">
+            <div><span>Hand</span><strong id="handNumber">0</strong></div>
+            <div><span>Phase</span><strong id="phase">lobby</strong></div>
+            <div><span>Pot</span><strong id="metaPot">0</strong></div>
+            <div><span>Current Bet</span><strong id="currentBet">0</strong></div>
+            <div><span>Deck</span><strong id="deckRemaining">0</strong></div>
+            <div><span>Burned</span><strong id="burnCount">0</strong></div>
+          </div>
+
+          <div id="adminControls" class="admin-panel hidden">
+            <label for="stackInput">Starting Money</label>
+            <div class="admin-row">
+              <input id="stackInput" type="number" min="50" step="1" value="1000" />
+              <button id="setStackBtn" type="button">Set</button>
+              <button id="startBtn" type="button">Start</button>
+            </div>
+          </div>
+
+          <div id="logList" class="log-messages"></div>
+
+          <div class="showdown-wrap">
+            <div class="showdown-title">Last Showdown</div>
+            <div id="showdownBox" class="showdown-box">No showdown yet.</div>
+          </div>
+        </aside>
+
+        <div class="table-container">
+          <div class="poker-table">
+            <div class="table-logo">TEXAS HOLD'EM</div>
+
+            <div class="board">
+              <div class="pot-container">$<span id="pot">0</span></div>
+              <div id="communityCards" class="community-cards"></div>
+            </div>
+
+            <div class="player-seat seat-1" data-seat-index="0"></div>
+            <div class="player-seat seat-2" data-seat-index="1"></div>
+            <div class="player-seat seat-3" data-seat-index="2"></div>
+            <div class="player-seat seat-4" data-seat-index="3"></div>
+            <div class="player-seat seat-5" data-seat-index="4"></div>
+            <div class="player-seat seat-6" data-seat-index="5"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div id="handIndicator" class="hand-indicator">
+          <div class="hand-indicator-header">
+            <span>Current Hand</span>
+            <span id="handWinProb" class="win-prob">Win: --%</span>
+          </div>
+          <div id="handCurrent" class="hand-indicator-name">Waiting for your next hand</div>
+          <div id="strengthMeter" class="strength-meter">
+            <div class="strength-segment"></div>
+            <div class="strength-segment"></div>
+            <div class="strength-segment"></div>
+            <div class="strength-segment"></div>
+            <div class="strength-segment"></div>
+            <div class="strength-segment"></div>
+          </div>
+          <div id="handLabel" class="hand-label">Strength: -</div>
+          <div id="handDraws" class="hand-subline">Draws: none</div>
+          <div id="handTip" class="hand-subline">Tip: join a hand to see guidance.</div>
+        </div>
+
+        <div class="bet-slider-container">
+          <div id="betDisplay" class="bet-amount">$0</div>
+          <div class="bet-stack">
+            <input id="betSlider" type="range" min="0" max="0" step="1" value="0" />
+            <div class="quick-bets">
+              <button id="quickMinBtn" class="quick-bet-btn" type="button">Min</button>
+              <button id="quickHalfBtn" class="quick-bet-btn" type="button">1/2 Pot</button>
+              <button id="quickPotBtn" class="quick-bet-btn" type="button">Pot</button>
+              <button id="quickAllBtn" class="quick-bet-btn" type="button">All-In</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button id="foldBtn" class="btn btn-fold" type="button">Fold</button>
+          <button id="callBtn" class="btn btn-call" type="button">
+            <span id="callLabel">Call</span>
+            <span id="callSub" class="btn-subtext">$0</span>
+          </button>
+          <button id="raiseBtn" class="btn btn-raise" type="button">
+            <span>Raise To</span>
+            <span id="raiseBtnText" class="btn-subtext">$0</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/client.js"></script>
+  </body>
+</html>
