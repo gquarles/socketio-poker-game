@@ -290,14 +290,17 @@ function computeAvailableActions(player) {
   const toCall = Math.max(0, state.currentBet - player.betThisRound);
   const maxTotal = player.betThisRound + player.chips;
   const minRaiseTo = getMinRaiseTo();
+  const raiseRightsOpen = !player.acted || toCall === 0;
+  const canRaise = raiseRightsOpen && player.chips > 0 && maxTotal > state.currentBet;
+  const minRaiseTarget = maxTotal < minRaiseTo ? maxTotal : minRaiseTo;
 
   return {
     canFold: true,
     canCheck: toCall === 0,
     canCall: toCall > 0 && player.chips > 0,
-    canRaise: player.chips > 0 && maxTotal > state.currentBet && maxTotal >= minRaiseTo,
+    canRaise,
     callAmount: Math.min(toCall, player.chips),
-    minRaiseTo,
+    minRaiseTo: minRaiseTarget,
     maxRaiseTo: maxTotal,
   };
 }
@@ -442,7 +445,8 @@ function startNextHand() {
 
   postForcedBet(smallBlindPlayer, state.smallBlind, "small blind");
   postForcedBet(bigBlindPlayer, state.bigBlind, "big blind");
-  state.currentBet = Math.max(smallBlindPlayer.betThisRound, bigBlindPlayer.betThisRound);
+  // A short blind all-in does not reduce preflop call/raise sizing.
+  state.currentBet = Math.max(state.bigBlind, smallBlindPlayer.betThisRound, bigBlindPlayer.betThisRound);
   state.lastRaiseSize = state.bigBlind;
 
   for (const player of state.players) {
@@ -534,9 +538,18 @@ function handleAction(playerId, action) {
     const targetTotal = Number(action.amount);
     const maxTotal = player.betThisRound + player.chips;
     const minRaiseTo = getMinRaiseTo();
+    const raiseRightsOpen = !player.acted || toCall === 0;
+    const previousBet = state.currentBet;
+    const raiseSize = targetTotal - previousBet;
+    const isAllInRaise = targetTotal === maxTotal;
+    const isFullRaise = raiseSize >= state.lastRaiseSize;
 
     if (!Number.isInteger(targetTotal)) {
       sendError(playerId, "Raise amount must be an integer.");
+      return;
+    }
+    if (!raiseRightsOpen) {
+      sendError(playerId, "Betting is not reopened. You may only call or fold.");
       return;
     }
     if (targetTotal <= state.currentBet) {
@@ -547,21 +560,20 @@ function handleAction(playerId, action) {
       sendError(playerId, "You do not have enough chips for that raise.");
       return;
     }
-    if (targetTotal < minRaiseTo) {
-      sendError(playerId, `Minimum raise is to ${minRaiseTo}.`);
+    if (targetTotal < minRaiseTo && !isAllInRaise) {
+      sendError(playerId, `Minimum raise is to ${minRaiseTo}, unless you are all-in.`);
       return;
     }
 
     const raiseAmount = targetTotal - player.betThisRound;
-    const previousBet = state.currentBet;
     commitBet(player, raiseAmount);
-    const raiseSize = targetTotal - previousBet;
 
     state.currentBet = targetTotal;
-    state.lastRaiseSize = raiseSize;
-
-    for (const seatedPlayer of state.players) {
-      seatedPlayer.acted = !isPlayerActionable(seatedPlayer);
+    if (isFullRaise) {
+      state.lastRaiseSize = raiseSize;
+      for (const seatedPlayer of state.players) {
+        seatedPlayer.acted = !isPlayerActionable(seatedPlayer);
+      }
     }
     player.acted = true;
     if (player.chips === 0) {
@@ -937,18 +949,22 @@ function handleDisconnect(playerId) {
   assignAdminIfNeeded();
 
   if (state.handInProgress && player.inHand && !player.folded) {
-    player.folded = true;
-    player.inHand = false;
-    player.acted = true;
-    addLog(`${name} folds due to disconnect.`);
+    if (player.allIn) {
+      addLog(`${name} is all-in; hand will continue to showdown.`);
+    } else {
+      player.folded = true;
+      player.inHand = false;
+      player.acted = true;
+      addLog(`${name} folds due to disconnect.`);
 
-    if (state.currentTurnId === player.id) {
-      advanceAfterAction(player.id);
-      return;
-    }
-    if (countRemainingInHand() <= 1) {
-      resolveHandByFold();
-      return;
+      if (state.currentTurnId === player.id) {
+        advanceAfterAction(player.id);
+        return;
+      }
+      if (countRemainingInHand() <= 1) {
+        resolveHandByFold();
+        return;
+      }
     }
   } else if (!state.handInProgress) {
     cleanupDisconnectedPlayers();
