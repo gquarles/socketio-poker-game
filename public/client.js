@@ -67,6 +67,7 @@ let logSignature = "";
 let trackedHandNumber = -1;
 let heroParticipatedInHand = false;
 let previousCommunityCards = [];
+let previousHeroCards = [];
 let lastShowdownAnnouncementKey = "";
 let previousBetByPlayerId = new Map();
 let previousPotAmount = 0;
@@ -166,6 +167,7 @@ function render(state) {
     betTrackingReady = false;
     previousBetByPlayerId = new Map();
     previousPotAmount = 0;
+    previousHeroCards = [];
     hideHandResultBanner();
     return;
   }
@@ -178,6 +180,7 @@ function render(state) {
     trackedHandNumber = handNumber;
     heroParticipatedInHand = false;
     previousCommunityCards = [];
+    previousHeroCards = [];
     lastShowdownAnnouncementKey = "";
     hideHandResultBanner();
   }
@@ -240,10 +243,14 @@ function renderCommunityCards(state) {
   elements.communityCards.innerHTML = "";
 
   const cards = state.communityCards || [];
+  let revealOrder = 0;
   for (let i = 0; i < 5; i += 1) {
     if (i < cards.length) {
       const reveal = previousCommunityCards[i] !== cards[i];
-      elements.communityCards.appendChild(createCardElement(cards[i], { reveal }));
+      elements.communityCards.appendChild(createCardElement(cards[i], { reveal, revealOrder }));
+      if (reveal) {
+        revealOrder += 1;
+      }
     } else if (state.handInProgress) {
       elements.communityCards.appendChild(createCardElement("", { back: true }));
     } else {
@@ -362,10 +369,18 @@ function renderSeat(seatNode, player, state) {
 
 function appendPlayerCards(container, player, state, isHero) {
   if (isHero && player.inHand && !player.folded && (state.yourCards || []).length === 2) {
-    for (const card of state.yourCards) {
-      container.appendChild(createCardElement(card));
+    const heroCards = state.yourCards || [];
+    for (let index = 0; index < heroCards.length; index += 1) {
+      const card = heroCards[index];
+      const reveal = previousHeroCards[index] !== card;
+      container.appendChild(createCardElement(card, { reveal, revealOrder: index }));
     }
+    previousHeroCards = heroCards.slice();
     return;
+  }
+
+  if (isHero) {
+    previousHeroCards = [];
   }
 
   if (player.inHand && !player.folded) {
@@ -747,10 +762,6 @@ function createCardElement(card, options = {}) {
   const el = document.createElement("div");
   el.className = "card";
 
-  if (options.reveal) {
-    el.classList.add("card-reveal");
-  }
-
   if (options.back) {
     el.classList.add("card-back");
     return el;
@@ -765,6 +776,12 @@ function createCardElement(card, options = {}) {
   if (!svgPath) {
     el.classList.add("card-placeholder");
     return el;
+  }
+
+  if (options.reveal) {
+    const revealOrder = Math.max(0, Number(options.revealOrder) || 0);
+    el.classList.add("card-reveal");
+    el.style.setProperty("--card-reveal-delay", `${revealOrder * 58}ms`);
   }
 
   const face = document.createElement("img");
