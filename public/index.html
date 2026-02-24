@@ -11,8 +11,20 @@
       <div class="join-card">
         <h1>Online Poker</h1>
         <p>Join the table. First player is admin.</p>
-        <form id="joinForm" class="join-form">
-          <input id="nameInput" type="text" maxlength="20" placeholder="Your name" required />
+        <form id="joinForm" class="join-form" autocomplete="off">
+          <input
+            id="nameInput"
+            name="player_handle"
+            type="text"
+            maxlength="20"
+            placeholder="Display name"
+            required
+            autocomplete="nickname"
+            autocapitalize="words"
+            autocorrect="off"
+            spellcheck="false"
+            inputmode="text"
+          />
           <button type="submit">Join Table</button>
         </form>
       </div>
@@ -21,7 +33,7 @@
     <section id="gameScreen" class="hidden">
       <div class="game-area">
         <div class="table-container">
-          <div class="poker-table">
+          <div id="pokerTable" class="poker-table">
             <div class="table-logo">TEXAS HOLD'EM</div>
 
             <div class="board">
@@ -35,6 +47,11 @@
             <div class="player-seat seat-4" data-seat-index="3"></div>
             <div class="player-seat seat-5" data-seat-index="4"></div>
             <div class="player-seat seat-6" data-seat-index="5"></div>
+          </div>
+
+          <div id="handResultBanner" class="hand-result-banner hidden" role="status" aria-live="polite">
+            <div id="handResultTitle" class="hand-result-title"></div>
+            <div id="handResultDetail" class="hand-result-detail"></div>
           </div>
         </div>
       </div>

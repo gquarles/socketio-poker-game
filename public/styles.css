@@ -247,6 +247,10 @@ body {
   line-height: 1.25;
 }
 
+.log-msg-new {
+  animation: logMessageIn 0.28s ease-out;
+}
+
 .showdown-wrap {
   margin-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -274,12 +278,116 @@ body {
   padding: 6px;
 }
 
+.showdown-line-winner {
+  border-color: rgba(76, 175, 80, 0.46);
+  background: rgba(76, 175, 80, 0.14);
+}
+
+.showdown-line-hero {
+  border-left: 3px solid #64b5f6;
+  padding-left: 8px;
+}
+
+.showdown-line-hero-win {
+  border-color: rgba(76, 175, 80, 0.52);
+  background: rgba(76, 175, 80, 0.22);
+  box-shadow: 0 0 14px rgba(76, 175, 80, 0.25);
+}
+
+.showdown-line-hero-lose {
+  border-color: rgba(229, 57, 53, 0.45);
+  background: rgba(229, 57, 53, 0.18);
+}
+
 .table-container {
   width: min(920px, 100%);
   height: min(460px, 72vh);
   min-height: 370px;
   position: relative;
   overflow: visible;
+}
+
+.hand-result-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(86vw, 420px);
+  border-radius: 14px;
+  border: 1px solid transparent;
+  padding: 12px 16px;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+}
+
+.hand-result-banner::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  border: 2px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hand-result-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.hand-result-detail {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #edf3fb;
+  opacity: 0.95;
+}
+
+.hand-result-banner.result-win {
+  background: linear-gradient(180deg, rgba(37, 160, 79, 0.95), rgba(21, 101, 53, 0.93));
+  border-color: rgba(214, 255, 189, 0.76);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.42),
+    0 0 32px rgba(150, 255, 120, 0.46),
+    0 0 56px rgba(76, 175, 80, 0.34);
+}
+
+.hand-result-banner.result-win::after {
+  border-color: rgba(204, 255, 146, 0.72);
+  animation: winRingPulse 0.9s ease-out infinite;
+  opacity: 1;
+}
+
+.hand-result-banner.result-win .hand-result-title {
+  font-size: clamp(30px, 3.8vw, 38px);
+  color: #f5ffe1;
+  text-shadow:
+    0 0 12px rgba(178, 255, 104, 0.65),
+    0 0 26px rgba(76, 175, 80, 0.44);
+  letter-spacing: 1.8px;
+  animation: winTitlePulse 0.8s ease-in-out infinite alternate;
+}
+
+.hand-result-banner.result-lose {
+  background: linear-gradient(180deg, rgba(156, 36, 36, 0.93), rgba(106, 23, 23, 0.92));
+  border-color: rgba(255, 148, 148, 0.46);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 24px rgba(229, 57, 53, 0.34);
+}
+
+.hand-result-banner.result-split {
+  background: linear-gradient(180deg, rgba(158, 110, 15, 0.93), rgba(109, 77, 11, 0.9));
+  border-color: rgba(255, 224, 130, 0.54);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 24px rgba(255, 193, 7, 0.32);
+}
+
+.hand-result-banner.result-enter {
+  animation: handResultIn 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.15);
 }
 
 .poker-table {
@@ -298,6 +406,22 @@ body {
   justify-content: center;
   align-items: center;
   overflow: visible;
+}
+
+.poker-table.table-showdown {
+  animation: showdownTableGlow 1.35s ease-in-out infinite;
+}
+
+.poker-table.table-hero-win {
+  animation: heroWinTablePulse 0.8s ease-out 2;
+}
+
+.poker-table.table-hero-lose {
+  animation: heroLoseTablePulse 0.55s ease-out 2;
+}
+
+.poker-table.table-hero-split {
+  animation: heroSplitTablePulse 0.65s ease-out 2;
 }
 
 .table-logo {
@@ -324,6 +448,36 @@ body {
   border: 1px solid var(--accent-gold);
   font-weight: 700;
   font-size: 18px;
+  position: relative;
+  transform-origin: center;
+}
+
+.pot-container.pot-pulse {
+  animation: potPulse 0.48s ease-out;
+}
+
+.chip-transfer {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fdf59e 0%, #e2b02a 45%, #995f12 100%);
+  border: 2px solid #f2d46c;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.42),
+    0 0 8px rgba(255, 214, 102, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 34;
+  animation: chipToPot 0.58s cubic-bezier(0.18, 0.78, 0.35, 1) forwards;
+}
+
+.chip-transfer::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1px dashed rgba(110, 62, 5, 0.58);
 }
 
 .community-cards {
@@ -345,6 +499,10 @@ body {
   position: relative;
   border: none;
   overflow: hidden;
+}
+
+.card-reveal {
+  animation: cardRevealIn 0.26s ease-out;
 }
 
 .card-face {
@@ -715,6 +873,193 @@ body {
   }
 }
 
+@keyframes logMessageIn {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardRevealIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes handResultIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes winRingPulse {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes winTitlePulse {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(-1px) scale(1.03);
+  }
+}
+
+@keyframes potPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+
+  45% {
+    transform: scale(1.14);
+    box-shadow: 0 0 20px rgba(244, 180, 26, 0.44);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+@keyframes chipToPot {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.68);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--chip-dx)), calc(-50% + var(--chip-dy))) scale(0.44);
+  }
+}
+
+@keyframes showdownTableGlow {
+  0% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      0 0 36px rgba(244, 180, 26, 0.28),
+      inset 0 0 58px rgba(244, 180, 26, 0.14);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@keyframes heroWinTablePulse {
+  0% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      0 0 42px rgba(126, 255, 101, 0.45),
+      inset 0 0 64px rgba(126, 255, 101, 0.16);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@keyframes heroLoseTablePulse {
+  0% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      0 0 28px rgba(229, 57, 53, 0.35),
+      inset 0 0 64px rgba(229, 57, 53, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@keyframes heroSplitTablePulse {
+  0% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      0 0 32px rgba(255, 205, 84, 0.36),
+      inset 0 0 64px rgba(255, 205, 84, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px var(--table-cushion),
+      0 30px 50px rgba(0, 0, 0, 0.82),
+      inset 0 0 50px rgba(0, 0, 0, 0.48);
+  }
+}
+
 .control-panel {
   background: #151a21;
   border-top: 1px solid #2a3441;
@@ -1008,6 +1353,20 @@ input[type="range"]::-webkit-slider-thumb {
     width: 100%;
     max-width: none;
   }
+
+  .hand-result-banner {
+    top: 10px;
+    width: min(92vw, 360px);
+    padding: 10px 12px;
+  }
+
+  .hand-result-title {
+    font-size: 22px;
+  }
+
+  .hand-result-banner.result-win .hand-result-title {
+    font-size: 27px;
+  }
 }
 
 @media (max-width: 680px) {
@@ -1046,6 +1405,18 @@ input[type="range"]::-webkit-slider-thumb {
 
   .seat-4 {
     top: 8%;
+  }
+
+  .hand-result-title {
+    font-size: 19px;
+  }
+
+  .hand-result-banner.result-win .hand-result-title {
+    font-size: 23px;
+  }
+
+  .hand-result-detail {
+    font-size: 12px;
   }
 
   .community-cards {
@@ -1088,5 +1459,21 @@ input[type="range"]::-webkit-slider-thumb {
 
   .quick-bets {
     flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal,
+  .log-msg-new,
+  .hand-result-banner.result-enter,
+  .hand-result-banner.result-win::after,
+  .hand-result-banner.result-win .hand-result-title,
+  .pot-container.pot-pulse,
+  .chip-transfer,
+  .poker-table.table-showdown,
+  .poker-table.table-hero-win,
+  .poker-table.table-hero-lose,
+  .poker-table.table-hero-split {
+    animation: none !important;
   }
 }

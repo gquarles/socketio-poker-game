@@ -50,6 +50,12 @@ const elements = {
   logDrawer: document.getElementById("logDrawer"),
   logPanel: document.getElementById("logPanel"),
   logToggleBtn: document.getElementById("logToggleBtn"),
+  pokerTable: document.getElementById("pokerTable"),
+  tableContainer: document.querySelector(".table-container"),
+  potContainer: document.querySelector(".pot-container"),
+  handResultBanner: document.getElementById("handResultBanner"),
+  handResultTitle: document.getElementById("handResultTitle"),
+  handResultDetail: document.getElementById("handResultDetail"),
   seatNodes: [...document.querySelectorAll(".player-seat")],
 };
 
@@ -57,6 +63,14 @@ let latestState = null;
 let transientError = "";
 let errorTimer = null;
 let logExpanded = false;
+let logSignature = "";
+let trackedHandNumber = -1;
+let heroParticipatedInHand = false;
+let previousCommunityCards = [];
+let lastShowdownAnnouncementKey = "";
+let previousBetByPlayerId = new Map();
+let previousPotAmount = 0;
+let betTrackingReady = false;
 
 elements.joinForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -149,11 +163,34 @@ function render(state) {
   elements.joinScreen.classList.toggle("hidden", state.joined);
   elements.gameScreen.classList.toggle("hidden", !state.joined);
   if (!state.joined) {
+    betTrackingReady = false;
+    previousBetByPlayerId = new Map();
+    previousPotAmount = 0;
+    hideHandResultBanner();
     return;
   }
 
   const you = (state.players || []).find((player) => player.id === state.youId) || null;
   const isAdmin = Boolean(you && you.isAdmin);
+  const handNumber = Number(state.handNumber) || 0;
+
+  if (handNumber !== trackedHandNumber) {
+    trackedHandNumber = handNumber;
+    heroParticipatedInHand = false;
+    previousCommunityCards = [];
+    lastShowdownAnnouncementKey = "";
+    hideHandResultBanner();
+  }
+
+  if (you && state.handInProgress && you.inHand) {
+    heroParticipatedInHand = true;
+  }
+
+  if (state.handInProgress) {
+    hideHandResultBanner();
+  }
+
+  elements.pokerTable.classList.toggle("table-showdown", Boolean(state.lastShowdown && !state.handInProgress));
 
   elements.adminControls.classList.toggle("hidden", !(isAdmin && !state.gameStarted));
   elements.stackInput.value = String(state.startingStack);
@@ -168,9 +205,11 @@ function render(state) {
 
   renderStatus(state);
   renderCommunityCards(state);
-  renderSeats(state);
+  const seatingOrder = renderSeats(state);
+  animateBetTransfers(state, seatingOrder);
   renderLogs(state.logs || []);
-  renderShowdown(state.lastShowdown);
+  renderShowdown(state.lastShowdown, state.youId);
+  renderHandResult(state);
   renderHandHelper(state.handInsight);
   renderActions(state);
 }
@@ -203,13 +242,16 @@ function renderCommunityCards(state) {
   const cards = state.communityCards || [];
   for (let i = 0; i < 5; i += 1) {
     if (i < cards.length) {
-      elements.communityCards.appendChild(createCardElement(cards[i]));
+      const reveal = previousCommunityCards[i] !== cards[i];
+      elements.communityCards.appendChild(createCardElement(cards[i], { reveal }));
     } else if (state.handInProgress) {
       elements.communityCards.appendChild(createCardElement("", { back: true }));
     } else {
       elements.communityCards.appendChild(createCardElement("", { placeholder: true }));
     }
   }
+
+  previousCommunityCards = cards.slice();
 }
 
 function renderSeats(state) {
@@ -219,6 +261,7 @@ function renderSeats(state) {
     const player = players[index] || null;
     renderSeat(seatNode, player, state);
   }
+  return players;
 }
 
 function getSeatingOrder(state) {
@@ -365,44 +408,200 @@ function addSeatFlag(container, condition, label) {
 }
 
 function renderLogs(logs) {
-  elements.logList.innerHTML = "";
   const recent = logs.slice(-28);
-  for (const log of recent) {
+  const nextSignature = recent.map((log) => `${log.at}|${log.text}`).join("\n");
+  if (nextSignature === logSignature) {
+    return;
+  }
+
+  logSignature = nextSignature;
+  elements.logList.innerHTML = "";
+  for (let index = 0; index < recent.length; index += 1) {
+    const log = recent[index];
     const line = document.createElement("div");
     line.className = "log-msg";
+    if (index === recent.length - 1) {
+      line.classList.add("log-msg-new");
+    }
     line.textContent = `[${log.at}] ${log.text}`;
     elements.logList.appendChild(line);
   }
   elements.logList.scrollTop = elements.logList.scrollHeight;
 }
 
-function renderShowdown(lastShowdown) {
+function renderShowdown(lastShowdown, youId) {
   if (!lastShowdown) {
     elements.showdownBox.textContent = "No showdown yet.";
     return;
   }
 
   elements.showdownBox.innerHTML = "";
+  const payouts = Array.isArray(lastShowdown.payouts) ? lastShowdown.payouts : [];
+  const heroPayout = payouts.find((row) => row.id === youId);
+  const winnerIds = new Set(payouts.map((row) => row.id));
+  const heroHand = (lastShowdown.hands || []).find((hand) => hand.id === youId);
 
   const board = document.createElement("div");
   board.className = "showdown-line";
   board.textContent = `Board: ${formatCards(lastShowdown.communityCards) || "None"}`;
   elements.showdownBox.appendChild(board);
 
-  const payouts = document.createElement("div");
-  payouts.className = "showdown-line";
-  payouts.textContent =
-    lastShowdown.payouts.length > 0
-      ? `Payouts: ${lastShowdown.payouts.map((row) => `${row.name} +$${formatMoney(row.amount)}`).join(" | ")}`
-      : "Payouts: none";
-  elements.showdownBox.appendChild(payouts);
+  const payoutLine = document.createElement("div");
+  payoutLine.className = "showdown-line";
+  if (heroPayout && Number(heroPayout.amount) > 0) {
+    payoutLine.classList.add("showdown-line-hero-win");
+  } else if (heroHand) {
+    payoutLine.classList.add("showdown-line-hero-lose");
+  }
+
+  payoutLine.textContent =
+    payouts.length > 0 ? `Payouts: ${payouts.map((row) => `${row.name} +$${formatMoney(row.amount)}`).join(" | ")}` : "Payouts: none";
+  elements.showdownBox.appendChild(payoutLine);
 
   for (const hand of lastShowdown.hands) {
     const handLine = document.createElement("div");
     handLine.className = "showdown-line";
+    if (winnerIds.has(hand.id)) {
+      handLine.classList.add("showdown-line-winner");
+    }
+    if (hand.id === youId) {
+      handLine.classList.add("showdown-line-hero");
+    }
     handLine.textContent = `${hand.name}: ${formatCards(hand.cards)} (${hand.handName})`;
     elements.showdownBox.appendChild(handLine);
   }
+}
+
+function renderHandResult(state) {
+  if (!state.lastShowdown || state.handInProgress) {
+    return;
+  }
+
+  const payouts = Array.isArray(state.lastShowdown.payouts) ? state.lastShowdown.payouts : [];
+  const announcementKey = `${state.handNumber}|${state.lastShowdown.type}|${payouts
+    .map((row) => `${row.id}:${row.amount}`)
+    .join(",")}`;
+
+  if (announcementKey === lastShowdownAnnouncementKey) {
+    return;
+  }
+
+  lastShowdownAnnouncementKey = announcementKey;
+  const heroPayout = Number((payouts.find((row) => row.id === state.youId) || {}).amount || 0);
+  const heroWon = heroPayout > 0;
+
+  if (!heroWon && !heroParticipatedInHand) {
+    hideHandResultBanner();
+    return;
+  }
+
+  if (heroWon) {
+    const splitPot = payouts.length > 1;
+    showHandResultBanner(
+      splitPot ? "split" : "win",
+      "YOU WIN",
+      splitPot ? `Split pot +$${formatMoney(heroPayout)}` : `+$${formatMoney(heroPayout)}`,
+    );
+    return;
+  }
+
+  const winnersText = payouts
+    .slice(0, 2)
+    .map((row) => row.name)
+    .join(" & ");
+  showHandResultBanner("lose", "YOU LOSE", winnersText ? `${winnersText} won this hand` : "No payout this hand");
+}
+
+function animateBetTransfers(state, seatingOrder) {
+  const players = state.players || [];
+  const currentBetByPlayerId = new Map();
+  for (const player of players) {
+    currentBetByPlayerId.set(player.id, Math.max(0, Number(player.betThisRound) || 0));
+  }
+
+  const currentPot = Math.max(0, Number(state.pot) || 0);
+  if (!betTrackingReady) {
+    previousBetByPlayerId = currentBetByPlayerId;
+    previousPotAmount = currentPot;
+    betTrackingReady = true;
+    return;
+  }
+
+  const seatIndexByPlayerId = new Map();
+  for (let index = 0; index < seatingOrder.length; index += 1) {
+    const player = seatingOrder[index];
+    if (player) {
+      seatIndexByPlayerId.set(player.id, index);
+    }
+  }
+
+  let playedTransfer = false;
+  for (const player of players) {
+    const previousBet = previousBetByPlayerId.get(player.id) || 0;
+    const currentBet = currentBetByPlayerId.get(player.id) || 0;
+    if (state.handInProgress && currentBet > previousBet) {
+      const delta = currentBet - previousBet;
+      const seatIndex = seatIndexByPlayerId.get(player.id);
+      if (Number.isInteger(seatIndex)) {
+        playChipTransferAnimation(seatIndex, delta);
+        playedTransfer = true;
+      }
+    }
+  }
+
+  if ((state.handInProgress && currentPot > previousPotAmount) || playedTransfer) {
+    pulsePot();
+  }
+
+  previousBetByPlayerId = currentBetByPlayerId;
+  previousPotAmount = currentPot;
+}
+
+function playChipTransferAnimation(seatIndex, amount) {
+  const seatNode = elements.seatNodes[seatIndex];
+  const tableContainer = elements.tableContainer;
+  const potContainer = elements.potContainer;
+  if (!seatNode || !tableContainer || !potContainer) {
+    return;
+  }
+
+  const containerRect = tableContainer.getBoundingClientRect();
+  const seatRect = seatNode.getBoundingClientRect();
+  const potRect = potContainer.getBoundingClientRect();
+  if (containerRect.width <= 0 || containerRect.height <= 0 || seatRect.width <= 0 || potRect.width <= 0) {
+    return;
+  }
+
+  const startX = seatRect.left + seatRect.width / 2 - containerRect.left;
+  const startY = seatRect.top + seatRect.height / 2 - containerRect.top;
+  const endX = potRect.left + potRect.width / 2 - containerRect.left;
+  const endY = potRect.top + potRect.height / 2 - containerRect.top;
+  const chipCount = clamp(Math.ceil(amount / 160), 1, 3);
+
+  for (let i = 0; i < chipCount; i += 1) {
+    const jitterX = (Math.random() - 0.5) * 12;
+    const jitterY = (Math.random() - 0.5) * 8;
+    const chip = document.createElement("div");
+    chip.className = "chip-transfer";
+    chip.style.left = `${startX + jitterX}px`;
+    chip.style.top = `${startY + jitterY}px`;
+    chip.style.setProperty("--chip-dx", `${endX - startX + (Math.random() - 0.5) * 10}px`);
+    chip.style.setProperty("--chip-dy", `${endY - startY + (Math.random() - 0.5) * 8}px`);
+    chip.style.animationDelay = `${i * 58}ms`;
+    tableContainer.appendChild(chip);
+    chip.addEventListener("animationend", () => chip.remove());
+  }
+}
+
+function pulsePot() {
+  const pot = elements.potContainer;
+  if (!pot) {
+    return;
+  }
+
+  pot.classList.remove("pot-pulse");
+  void pot.offsetWidth;
+  pot.classList.add("pot-pulse");
 }
 
 function renderHandHelper(insight) {
@@ -524,9 +723,33 @@ function setLogDrawerExpanded(expanded) {
   elements.logToggleBtn.textContent = logExpanded ? "Hide Game Log" : "Show Game Log";
 }
 
+function showHandResultBanner(tone, title, detail) {
+  const banner = elements.handResultBanner;
+  banner.classList.remove("hidden", "result-win", "result-lose", "result-split", "result-neutral", "result-enter");
+  elements.pokerTable.classList.remove("table-hero-win", "table-hero-lose", "table-hero-split");
+
+  elements.handResultTitle.textContent = title;
+  elements.handResultDetail.textContent = detail;
+
+  void banner.offsetWidth;
+  banner.classList.add(`result-${tone}`, "result-enter");
+  elements.pokerTable.classList.add(`table-hero-${tone}`);
+}
+
+function hideHandResultBanner() {
+  const banner = elements.handResultBanner;
+  banner.classList.add("hidden");
+  banner.classList.remove("result-win", "result-lose", "result-split", "result-neutral", "result-enter");
+  elements.pokerTable.classList.remove("table-hero-win", "table-hero-lose", "table-hero-split");
+}
+
 function createCardElement(card, options = {}) {
   const el = document.createElement("div");
   el.className = "card";
+
+  if (options.reveal) {
+    el.classList.add("card-reveal");
+  }
 
   if (options.back) {
     el.classList.add("card-back");
