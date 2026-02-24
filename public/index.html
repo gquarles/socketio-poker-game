@@ -20,36 +20,6 @@
 
     <section id="gameScreen" class="hidden">
       <div class="game-area">
-        <aside class="action-log">
-          <div class="log-header">Game Log</div>
-          <div id="statusLine" class="status-line"></div>
-
-          <div class="table-meta">
-            <div><span>Hand</span><strong id="handNumber">0</strong></div>
-            <div><span>Phase</span><strong id="phase">lobby</strong></div>
-            <div><span>Pot</span><strong id="metaPot">0</strong></div>
-            <div><span>Current Bet</span><strong id="currentBet">0</strong></div>
-            <div><span>Deck</span><strong id="deckRemaining">0</strong></div>
-            <div><span>Burned</span><strong id="burnCount">0</strong></div>
-          </div>
-
-          <div id="adminControls" class="admin-panel hidden">
-            <label for="stackInput">Starting Money</label>
-            <div class="admin-row">
-              <input id="stackInput" type="number" min="50" step="1" value="1000" />
-              <button id="setStackBtn" type="button">Set</button>
-              <button id="startBtn" type="button">Start</button>
-            </div>
-          </div>
-
-          <div id="logList" class="log-messages"></div>
-
-          <div class="showdown-wrap">
-            <div class="showdown-title">Last Showdown</div>
-            <div id="showdownBox" class="showdown-box">No showdown yet.</div>
-          </div>
-        </aside>
-
         <div class="table-container">
           <div class="poker-table">
             <div class="table-logo">TEXAS HOLD'EM</div>
@@ -113,7 +83,43 @@
             <span id="raiseBtnText" class="btn-subtext">$0</span>
           </button>
         </div>
+
+        <div id="adminControls" class="admin-panel hidden">
+          <label for="stackInput">Starting Money</label>
+          <div class="admin-row">
+            <input id="stackInput" type="number" min="50" step="1" value="1000" />
+            <button id="setStackBtn" type="button">Set</button>
+            <button id="startBtn" type="button">Start</button>
+          </div>
+        </div>
       </div>
+
+      <section id="logDrawer" class="log-drawer">
+        <button id="logToggleBtn" class="log-toggle-btn" type="button" aria-expanded="false" aria-controls="logPanel">
+          Show Game Log
+        </button>
+
+        <aside id="logPanel" class="action-log hidden">
+          <div class="log-header">Game Log</div>
+          <div id="statusLine" class="status-line"></div>
+
+          <div class="table-meta">
+            <div><span>Hand</span><strong id="handNumber">0</strong></div>
+            <div><span>Phase</span><strong id="phase">lobby</strong></div>
+            <div><span>Pot</span><strong id="metaPot">0</strong></div>
+            <div><span>Current Bet</span><strong id="currentBet">0</strong></div>
+            <div><span>Deck</span><strong id="deckRemaining">0</strong></div>
+            <div><span>Burned</span><strong id="burnCount">0</strong></div>
+          </div>
+
+          <div id="logList" class="log-messages"></div>
+
+          <div class="showdown-wrap">
+            <div class="showdown-title">Last Showdown</div>
+            <div id="showdownBox" class="showdown-box">No showdown yet.</div>
+          </div>
+        </aside>
+      </section>
     </section>
 
     <script src="/socket.io/socket.io.js"></script>

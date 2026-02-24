@@ -47,12 +47,16 @@ const elements = {
 
   logList: document.getElementById("logList"),
   showdownBox: document.getElementById("showdownBox"),
+  logDrawer: document.getElementById("logDrawer"),
+  logPanel: document.getElementById("logPanel"),
+  logToggleBtn: document.getElementById("logToggleBtn"),
   seatNodes: [...document.querySelectorAll(".player-seat")],
 };
 
 let latestState = null;
 let transientError = "";
 let errorTimer = null;
+let logExpanded = false;
 
 elements.joinForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -113,6 +117,12 @@ elements.quickPotBtn.addEventListener("click", () => {
 elements.quickAllBtn.addEventListener("click", () => {
   setQuickBet("all");
 });
+
+elements.logToggleBtn.addEventListener("click", () => {
+  setLogDrawerExpanded(!logExpanded);
+});
+
+setLogDrawerExpanded(false);
 
 socket.on("errorMessage", (message) => {
   transientError = String(message || "Unknown error");
@@ -504,6 +514,14 @@ function updateBetViews(value) {
   const display = `$${formatMoney(value)}`;
   elements.betDisplay.textContent = display;
   elements.raiseBtnText.textContent = display;
+}
+
+function setLogDrawerExpanded(expanded) {
+  logExpanded = Boolean(expanded);
+  elements.logPanel.classList.toggle("hidden", !logExpanded);
+  elements.logDrawer.classList.toggle("is-open", logExpanded);
+  elements.logToggleBtn.setAttribute("aria-expanded", String(logExpanded));
+  elements.logToggleBtn.textContent = logExpanded ? "Hide Game Log" : "Show Game Log";
 }
 
 function createCardElement(card, options = {}) {
