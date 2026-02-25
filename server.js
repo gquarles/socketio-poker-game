@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_STARTING_STACK = 1000;
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
+const MAX_PLAYERS = 6;
 const NEXT_HAND_DELAY_MS = 5000;
 const MAX_LOGS = 40;
 const FULL_DECK_SIZE = 52;
@@ -57,8 +58,13 @@ io.on("connection", (socket) => {
   socket.emit("state", buildStateFor(socket.id));
 
   socket.on("join", (payload = {}) => {
+    const data = payload && typeof payload === "object" ? payload : {};
     if (findPlayer(socket.id)) {
       socket.emit("errorMessage", "You are already seated.");
+      return;
+    }
+    if (getConnectedPlayers().length >= MAX_PLAYERS) {
+      socket.emit("errorMessage", `Table is full (${MAX_PLAYERS} players max).`);
       return;
     }
     if (state.gameStarted) {
@@ -66,7 +72,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const name = sanitizeName(payload.name);
+    const name = sanitizeName(data.name);
     if (!name) {
       socket.emit("errorMessage", "Enter a valid name (2-20 characters).");
       return;
@@ -79,6 +85,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("setStartingStack", (payload = {}) => {
+    const data = payload && typeof payload === "object" ? payload : {};
     const player = findPlayer(socket.id);
     if (!player || !player.isAdmin) {
       socket.emit("errorMessage", "Only the admin can set starting money.");
@@ -89,7 +96,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const amount = Number(payload.amount);
+    const amount = Number(data.amount);
     if (!Number.isInteger(amount) || amount < 50 || amount > 1000000) {
       socket.emit("errorMessage", "Starting money must be an integer between 50 and 1,000,000.");
       return;
@@ -138,7 +145,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("action", (payload = {}) => {
-    handleAction(socket.id, payload);
+    const data = payload && typeof payload === "object" ? payload : {};
+    handleAction(socket.id, data);
   });
 
   socket.on("disconnect", () => {
@@ -199,7 +207,15 @@ function emitStateToAll() {
 
 function buildStateFor(viewerId) {
   const viewer = findPlayer(viewerId);
-  const shownPlayers = state.players.filter((player) => !player.disconnected);
+  const shownPlayers = state.players.filter((player) => {
+    if (!player.disconnected) {
+      return true;
+    }
+    if (!state.handInProgress) {
+      return false;
+    }
+    return player.inHand || player.totalContribution > 0;
+  });
   const availableActions = computeAvailableActions(viewer);
 
   return {
@@ -232,6 +248,7 @@ function buildStateFor(viewerId) {
       name: player.name,
       chips: player.chips,
       isAdmin: player.isAdmin,
+      disconnected: player.disconnected,
       inHand: player.inHand,
       folded: player.folded,
       allIn: player.allIn,
@@ -456,7 +473,13 @@ function startNextHand() {
   const firstToAct = getNextPlayer(state.bigBlindId, (player) => isPlayerActionable(player));
   state.currentTurnId = firstToAct ? firstToAct.id : null;
 
-  addLog(`Hand #${state.handNumber} started. Dealer: ${findPlayer(state.dealerId).name}.`);
+  const dealer = findPlayer(state.dealerId);
+  addLog(`Hand #${state.handNumber} started. Dealer: ${dealer ? dealer.name : "Unknown"}.`);
+
+  if (shouldAutoRunoutBoard()) {
+    fastForwardBoardAndShowdown();
+    return;
+  }
 
   if (!state.currentTurnId) {
     fastForwardBoardAndShowdown();
@@ -467,8 +490,7 @@ function startNextHand() {
 }
 
 function postForcedBet(player, amount, label) {
-  const paid = Math.min(amount, player.chips);
-  commitBet(player, paid);
+  const paid = commitBet(player, amount);
   if (player.chips === 0) {
     player.allIn = true;
   }
@@ -477,6 +499,7 @@ function postForcedBet(player, amount, label) {
 
 function handleAction(playerId, action) {
   const player = findPlayer(playerId);
+  const actionPayload = action && typeof action === "object" ? action : {};
   if (!player) {
     return;
   }
@@ -493,7 +516,7 @@ function handleAction(playerId, action) {
     return;
   }
 
-  const actionType = typeof action.type === "string" ? action.type.toLowerCase() : "";
+  const actionType = typeof actionPayload.type === "string" ? actionPayload.type.toLowerCase() : "";
   const toCall = Math.max(0, state.currentBet - player.betThisRound);
 
   if (actionType === "fold") {
@@ -535,7 +558,7 @@ function handleAction(playerId, action) {
   }
 
   if (actionType === "raise") {
-    const targetTotal = Number(action.amount);
+    const targetTotal = Number(actionPayload.amount);
     const maxTotal = player.betThisRound + player.chips;
     const minRaiseTo = getMinRaiseTo();
     const raiseRightsOpen = !player.acted || toCall === 0;
@@ -598,6 +621,11 @@ function advanceAfterAction(lastActorId) {
     return;
   }
 
+  if (shouldAutoRunoutBoard()) {
+    fastForwardBoardAndShowdown();
+    return;
+  }
+
   if (isBettingRoundComplete()) {
     goToNextStreet();
     return;
@@ -634,6 +662,11 @@ function goToNextStreet() {
 
   state.currentBet = 0;
   state.lastRaiseSize = state.bigBlind;
+
+  if (shouldAutoRunoutBoard()) {
+    fastForwardBoardAndShowdown();
+    return;
+  }
 
   const firstToAct = getNextPlayer(state.dealerId, (player) => isPlayerActionable(player));
   state.currentTurnId = firstToAct ? firstToAct.id : null;
@@ -798,8 +831,9 @@ function calculatePayouts(scoreById) {
   let previousLevel = 0;
 
   for (const level of levels) {
+    const trancheSize = level - previousLevel;
     const involved = contributors.filter((player) => player.totalContribution >= level);
-    const sidePot = (level - previousLevel) * involved.length;
+    const sidePot = trancheSize * involved.length;
     previousLevel = level;
     if (sidePot <= 0) {
       continue;
@@ -807,6 +841,10 @@ function calculatePayouts(scoreById) {
 
     const eligible = involved.filter((player) => scoreById.has(player.id));
     if (eligible.length === 0) {
+      // No live contender can win this tranche; refund it to the contributors who funded it.
+      for (const player of involved) {
+        payoutMap.set(player.id, payoutMap.get(player.id) + trancheSize);
+      }
       continue;
     }
 
@@ -900,13 +938,19 @@ function resetPlayerHandState(player) {
 }
 
 function commitBet(player, amount) {
-  if (amount <= 0) {
-    return;
+  const normalized = Number.isFinite(amount) ? Math.floor(amount) : 0;
+  if (normalized <= 0 || player.chips <= 0) {
+    return 0;
   }
-  player.chips -= amount;
-  player.betThisRound += amount;
-  player.totalContribution += amount;
-  state.pot += amount;
+  const paid = Math.min(normalized, player.chips);
+  if (paid <= 0) {
+    return 0;
+  }
+  player.chips -= paid;
+  player.betThisRound += paid;
+  player.totalContribution += paid;
+  state.pot += paid;
+  return paid;
 }
 
 function sendError(playerId, message) {
@@ -924,12 +968,33 @@ function isPlayerActionable(player) {
   return player.inHand && !player.folded && !player.allIn;
 }
 
+function getActionablePlayers() {
+  return state.players.filter((player) => isPlayerActionable(player));
+}
+
 function countRemainingInHand() {
   return state.players.filter((player) => player.inHand && !player.folded).length;
 }
 
+function hasPendingBettingDecision() {
+  const actionables = getActionablePlayers();
+  if (actionables.length === 0) {
+    return false;
+  }
+  if (actionables.length > 1) {
+    return true;
+  }
+
+  const lonePlayer = actionables[0];
+  return Math.max(0, state.currentBet - lonePlayer.betThisRound) > 0;
+}
+
+function shouldAutoRunoutBoard() {
+  return countRemainingInHand() > 1 && !hasPendingBettingDecision();
+}
+
 function isBettingRoundComplete() {
-  const actionables = state.players.filter((player) => isPlayerActionable(player));
+  const actionables = getActionablePlayers();
   if (actionables.length === 0) {
     return true;
   }
@@ -951,6 +1016,10 @@ function handleDisconnect(playerId) {
   if (state.handInProgress && player.inHand && !player.folded) {
     if (player.allIn) {
       addLog(`${name} is all-in; hand will continue to showdown.`);
+      if (state.currentTurnId === player.id) {
+        advanceAfterAction(player.id);
+        return;
+      }
     } else {
       player.folded = true;
       player.inHand = false;
@@ -965,6 +1034,10 @@ function handleDisconnect(playerId) {
         resolveHandByFold();
         return;
       }
+    }
+    if (shouldAutoRunoutBoard()) {
+      fastForwardBoardAndShowdown();
+      return;
     }
   } else if (!state.handInProgress) {
     cleanupDisconnectedPlayers();

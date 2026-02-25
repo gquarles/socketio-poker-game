@@ -351,7 +351,8 @@ function renderSeat(seatNode, player, state) {
 
   const name = document.createElement("div");
   name.className = "player-name";
-  name.textContent = isHero ? `${player.name} (You)` : player.name;
+  const baseName = isHero ? `${player.name} (You)` : player.name;
+  name.textContent = player.disconnected ? `${baseName} (Disconnected)` : baseName;
 
   const stack = document.createElement("div");
   stack.className = "player-stack";
@@ -408,6 +409,7 @@ function renderSeatFlags(player, state) {
   addSeatFlag(wrap, player.allIn, "All-In");
   addSeatFlag(wrap, player.folded, "Folded");
   addSeatFlag(wrap, player.id === state.currentTurnId, "Turn");
+  addSeatFlag(wrap, player.disconnected, "Disconnected");
 
   return wrap;
 }
